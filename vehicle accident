@@ -1,0 +1,198 @@
+#include<LiquidCrystal.h>
+LiquidCrystal lcd(6, 7, 2, 3, 4, 5); 
+
+ #include "TinyGPS++.h"
+ TinyGPSPlus gps;
+  char* lati = new char[20];
+ char* longi = new char[20];
+ float latitude,longitude; 
+ 
+ int acc=0, vibration=0, mq3=0 ;
+ int temp=0,i=0,j=0;
+ 
+#include<SoftwareSerial.h>
+SoftwareSerial mySerial(8,9); // GSM MODEM / GPS
+ 
+void setup()
+{
+  Serial.begin(9600);
+  Serial.println("VEHICLE ACCIDENT AND ALERT SYSTEM USING CALL AND MESSAGE");
+
+  mySerial.begin(9600); // GSM MODEM
+  
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("ACIDENT DETECTON");
+  lcd.setCursor(0, 1);
+  lcd.print("AND ALERT SYSTEM");
+  delay(1000);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(" USING CALL AND ");
+  lcd.setCursor(0, 1);
+  lcd.print("MESSAGE SERVICES");
+  delay(1000);
+  
+  pinMode(13,OUTPUT); // BUZZER
+  pinMode(12,OUTPUT);
+  digitalWrite(12,HIGH);
+  digitalWrite(13,LOW);
+  
+  pinMode(A2,OUTPUT); // RELAY
+  digitalWrite(A2,HIGH);
+
+  pinMode(A1,OUTPUT); // VOICE OUTPUT
+  digitalWrite(A1,HIGH);
+  
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("STATUS :  NORMAL");
+  lcd.setCursor(0, 1);
+  lcd.print("  IGNITION  ON  ");
+  delay(1000);
+  
+  digitalWrite(A2,LOW);  // RELAY ON
+
+}
+
+void loop()
+{ 
+  
+ acc = analogRead(A0);
+ mq3 = analogRead(A3);
+ Serial.println(acc);
+ 
+  if(mq3 > 800) // ALCOHOL
+  {
+    digitalWrite(A2, HIGH);  // RELAY Off
+    digitalWrite(13, HIGH); // BUZZER On
+    digitalWrite(12, LOW);
+    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("HIGH ALERT......");
+    lcd.setCursor(0, 1);
+    lcd.print("ALCOHOL DETECTED");
+    delay(500);
+      lcd.clear();
+      lcd.setCursor(0, 0);           
+      lcd.print("SENDING SMS.....");
+      mySerial.println("AT+CMGF=1");    //Sets the GSM Module in Text Mode
+      delay(1000);  // Delay of 1000 milli seconds or 1 second
+      mySerial.println("AT+CMGS=\"+918639737472\"\r"); // Replace x with mobile number
+      delay(1000);
+      mySerial.println("HIGH ALERT: ALCOHOL DETECTED.. DRIVER DRUNKED");// The SMS text you want to send
+      delay(100);
+      mySerial.println((char)26);// ASCII code of CTRL+Z
+      delay(1000);
+      lcd.setCursor(0, 1);           
+      lcd.print("MESSAGE SENT");
+      delay(1000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("HIGH ALERT......");
+      lcd.setCursor(0, 1);
+      lcd.print("ALCOHOL DETECTED");
+       
+    while(1); // HALT
+  }
+  
+  
+  else if((acc < 280) | (acc > 400))  // ACCIDENT DETECTION
+  { 
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("ACCIDENT DETECTD");
+      lcd.setCursor(0, 1);
+      lcd.print("VEHICLE IGN. OFF");
+    
+      digitalWrite(A2, HIGH);  // RELAY Off
+      digitalWrite(13, HIGH); // BUZZER On
+      digitalWrite(12, LOW);
+      
+      lcd.setCursor(0, 0);
+      lcd.print("ACCIDENT DETECTD");
+      lcd.setCursor(0, 1);       
+      lcd.print("SENDING SMS.....");
+      
+      getlat(); // CALL GPS FUNTION TO GET LATITUTE AND LONGITUDE 
+      
+      mySerial.println("AT+CMGF=1");    //Sets the GSM Module in Text Mode
+      delay(1000);  // Delay of 1000 milli seconds or 1 second
+      mySerial.println("AT+CMGS=\"+918639737472\"\r"); // Replace x with mobile number
+      delay(1000);
+      mySerial.println("VEHICLE ACCIDENT DETECTED AT LOCATION : ");// The SMS text you want to send
+      delay(100);
+      mySerial.print("http://www.google.com/maps/place/"); // GMAP LINK
+      delay(100);
+      mySerial.print(lati); // LATITUDE
+      delay(100);
+      mySerial.print(",");
+      delay(100);
+      mySerial.print(longi); // LONGITUDE
+      delay(100);
+      mySerial.println((char)26);// ASCII code of CTRL+Z
+      delay(1000);
+      lcd.setCursor(0, 1);           
+      lcd.print("  MESSAGE SENT  ");
+      delay(7000);
+
+      digitalWrite(A1,LOW); // VOICE GENERATED
+      delay(4000);
+      
+      mySerial.println("ATD+918639737472;"); // Replace x with mobile number CALL CONNECTED
+      delay(1000);
+      
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("ACCIDENT DETECTD");
+      lcd.setCursor(0, 1);
+      lcd.print("VEHICLE IGN. OFF");
+    
+      while(1); // HALT  
+ 
+}
+}
+
+void getlat() // READ LATITUDE AND LONGITUDE FROM GPS
+{ 
+      while(1)
+      {
+      while(mySerial.available()>0)
+      { 
+       if(gps.encode(mySerial.read()))
+       {
+
+       Serial.println(gps.location.lat(), 6); // Latitude in degrees (double)
+       Serial.println(gps.location.lng(), 6); // Longitude in degrees (double)
+       Serial.print("LAT=");  
+
+       
+       for (j=0; j<6; j++)
+       {
+       latitude = gps.location.lat();
+       }
+       
+       dtostrf(latitude,7,5,lati);
+       
+       Serial.println(lati); // LATITUDE IN DEGREE
+       
+       Serial.print("LONG="); 
+
+       for (j=0; j<6; j++)
+       {
+       longitude = gps.location.lng();
+       }
+       
+       dtostrf(longitude,7,5,longi);
+
+       
+       Serial.println(longi); // LONGITUDE IN DEGREE    
+       delay(1000);
+       return;
+       }
+       }
+     }
+}
